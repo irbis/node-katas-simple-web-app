@@ -4,8 +4,12 @@
   "description": "Simple Web App to study based node capabilities to serve HTTP requests",
   "main": "app.js",
   "scripts": {
+    "run":  "node app.js",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
-  "author": "Oleksii Nadtochii <a.nadtochey@gmail.com>",
+  "author": {
+    "name": "Oleksii Nadtochii <a.nadtochey@gmail.com>",
+    "email": "a.nadtochey@gmail.com"
+  },
   "license": "GPL-2.0-or-later"
 }

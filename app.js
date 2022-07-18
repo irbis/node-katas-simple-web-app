@@ -3,7 +3,6 @@ const { stat } = require('node:fs/promises')
 const { statSync } = require('node:fs')
 
 const PORT = (process.argv[2] || process.env.PORT || 3000)
-const DEVMODE = process.env.NODE_ENV !== 'production'
 
 /*
     Supported URIs and queries:
@@ -31,41 +30,54 @@ const iconSize = stat(`${process.env.PWD}/favicon.png`)
     .then(stats => { return stats.size })
     .catch(err => { return undefined })
 
-function htmlContent(res) {
-    console.log(iconSize)
-
-    res.statusCode = 200
-    res.setHeader('Content-Type', "text/html")
-    res.end('Hello world!')
+async function badRequest() {
+    return {
+        statusCode: 400,
+        contentType: "text/html",
+        body: null
+    }
 }
 
-function jsonContent(res) {
-    const helloWorld = { message: "Hello World!" }
-    res.statusCode = 200
-    res.setHeader('Content-Type', 'application/json')
-    res.end(JSON.stringify(helloWorld))
+async function htmlContent() {
+    const message = 'Html Hello World!'
+
+    return {
+        statusCode: 200,
+        contentType: "text/html",
+        body: message
+    }
 }
 
-function xmlContent(res) {
-    const helloWorld = "<message>Hello World!</message>"
-    res.statusCode = 200
-    res.setHeader('Content-Type', 'application/xml')
-    res.end(helloWorld)
+async function jsonContent() {
+    const message = {
+        message: 'Json Hello World!'
+    }
+
+    return {
+        statusCode: 200,
+        contentType: "application/json",
+        body: JSON.stringify(message)
+    }
 }
 
-function favicon(res) {
+async function xmlContent() {
+    const message = "<message>Hello World!</message>"
+
+    return {
+        statusCode: 200,
+        contentType: "application/xml",
+        body: message
+    }
+}
+
+async function favicon() {
     res.statusCode = 200
     res.setHeader('Content-Type', 'image/png')
     //res.write()
     //res.end()
 }
 
-function badRequest(res) {
-    res.statusCode = 400
-    res.end()
-}
-
-const operations = {
+const handlers = {
     "/": htmlContent,
     "/html": htmlContent,
     "/json": jsonContent,
@@ -73,12 +85,16 @@ const operations = {
 }
 
 function service(req, res) {
-    if (DEVMODE)
-        console.log(req.url)
+    console.log(req.url)
 
-    const operation = operations[req.url] || badRequest
+    const handler = handlers[req.url] || badRequest
 
-    return operation(res)
+    handler()
+        .then(({statusCode, contentType, body}) => {
+            res.writeHead(statusCode, { "Content-Type": contentType })
+            if (body && body.pipe) body.pipe(res)
+            else res.end(body)
+        })
 }
 
 http.createServer(service).listen(PORT)
