@@ -1,6 +1,5 @@
 const http = require('http')
-const { stat } = require('node:fs/promises')
-const { statSync, createReadStream } = require('node:fs')
+const { stat, open } = require('node:fs/promises')
 
 const PORT = (process.argv[2] || process.env.PORT || 3000)
 
@@ -12,28 +11,13 @@ const PORT = (process.argv[2] || process.env.PORT || 3000)
         /favicon.ico - favicon
  */
 
-const faviconSize = function() {
-    try {
-        return statSync(`${process.env.PWD}/favicon.png`).size
-    } catch (err) {
-        return null
-    }
-}()
-
-// let iconSize = null
-// stat(`${process.env.PWD}/favicon1.png`,
-//     (err, stats) => {
-//         if (!err) iconSize = stats.size
-//     })
-
-const iconSize = stat(`${process.env.PWD}/favicon.png`)
-    .then(stats => { return stats.size })
-    .catch(err => { return undefined })
-
 async function badRequest() {
     return {
         statusCode: 400,
-        contentType: "text/html",
+        headers: {
+            "Content-Type": "text/html",
+            "Content-Length": 0
+        },
         body: null
     }
 }
@@ -43,7 +27,9 @@ async function htmlContent() {
 
     return {
         statusCode: 200,
-        contentType: "text/html",
+        headers: {
+            "Content-Type": "text/html"
+        },
         body: message
     }
 }
@@ -55,7 +41,9 @@ async function jsonContent() {
 
     return {
         statusCode: 200,
-        contentType: "application/json",
+        headers: {
+            "Content-Type": "text/html"
+        },
         body: JSON.stringify(message)
     }
 }
@@ -65,17 +53,25 @@ async function xmlContent() {
 
     return {
         statusCode: 200,
-        contentType: "application/xml",
+        headers: {
+            "Content-Type": "text/html"
+        },
         body: message
     }
 }
 
 async function favicon() {
-    const faviconReadStream = createReadStream(`${process.env.PWD}/favicon.png`)
+    const FAVICON_PATH = `${process.env.PWD}/favicon.png`
+    const faviconSize = (await stat(FAVICON_PATH)).size
+    const faviconReadStream = await open(FAVICON_PATH)
+        .then(fileHander => fileHander.createReadStream())
 
     return {
         statusCode: 200,
-        contentType: "image/png",
+        headers: {
+            "Content-Type": "image/png",
+            "Content-Length": faviconSize
+        },
         body: faviconReadStream
     }
 }
@@ -94,8 +90,11 @@ function service(req, res) {
     const handler = handlers[req.url] || badRequest
 
     handler()
-        .then(({statusCode, contentType, body}) => {
-            res.writeHead(statusCode, { "Content-Type": contentType })
+        .then(({statusCode, headers, body}) => {
+            const resHeaders = Object.assign({}, headers)
+            if (!resHeaders["Content-Length"]) resHeaders["Content-Length"] = body ? body.length : 0
+            res.writeHead(statusCode, resHeaders)
+
             if (body && body.pipe) body.pipe(res)
             else res.end(body)
         })
