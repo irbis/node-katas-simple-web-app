@@ -1,6 +1,6 @@
 const http = require('http')
 const { stat } = require('node:fs/promises')
-const { statSync } = require('node:fs')
+const { statSync, createReadStream } = require('node:fs')
 
 const PORT = (process.argv[2] || process.env.PORT || 3000)
 
@@ -71,17 +71,21 @@ async function xmlContent() {
 }
 
 async function favicon() {
-    res.statusCode = 200
-    res.setHeader('Content-Type', 'image/png')
-    //res.write()
-    //res.end()
+    const faviconReadStream = createReadStream(`${process.env.PWD}/favicon.png`)
+
+    return {
+        statusCode: 200,
+        contentType: "image/png",
+        body: faviconReadStream
+    }
 }
 
 const handlers = {
     "/": htmlContent,
     "/html": htmlContent,
     "/json": jsonContent,
-    "/xml": xmlContent
+    "/xml": xmlContent,
+    "/favicon.ico": favicon
 }
 
 function service(req, res) {
